@@ -35,7 +35,7 @@ const upload = multer({ storage });
 app.use('/uploads', express.static('uploads'));
 
 // MongoDB connection
-const DB = process.env.MONGODB_URI;
+const DB = 'mongodb+srv://abdus:12345@cluster0.3sldt.mongodb.net/mern?retryWrites=true&w=majority&appName=Cluster0';
 if (!DB) {
   console.error('MONGODB_URI environment variable is missing');
   process.exit(1);
