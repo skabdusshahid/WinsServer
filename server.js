@@ -42,8 +42,6 @@ if (!DB) {
 }
 
 mongoose.connect(DB, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
   serverSelectionTimeoutMS: 5000 // 5 seconds
 })
   .then(() => console.log('MongoDB connection successful'))
