@@ -35,14 +35,23 @@ const upload = multer({ storage });
 app.use('/uploads', express.static('uploads'));
 
 // MongoDB connection
-const DB = 'mongodb+srv://abdus:12345@cluster0.3sldt.mongodb.net/mern?retryWrites=true&w=majority&appName=Cluster0';
+const DB = process.env.MONGODB_URI;
+if (!DB) {
+  console.error('MONGODB_URI environment variable is missing');
+  process.exit(1);
+}
+
 mongoose.connect(DB, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000 // 5 seconds
 })
   .then(() => console.log('MongoDB connection successful'))
-  .catch(err => console.error('MongoDB connection error:', err.message));
-  
+  .catch(err => {
+    console.error('MongoDB connection error:', err.message);
+    process.exit(1);
+  });
+
 // Define User schema and model
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
@@ -50,10 +59,9 @@ const userSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', userSchema);
 
-
 const basicSchema = new mongoose.Schema({
-  logo: { type: String }, // Field for storing the logo image path
-  navbar: [{ type: String }], // Array for storing navbar items
+  logo: { type: String },
+  navbar: [{ type: String }],
   count_title1: { type: String },
   count_value1: { type: String },
   count_title2: { type: String },
@@ -62,22 +70,17 @@ const basicSchema = new mongoose.Schema({
   count_value3: { type: String },
   count_title4: { type: String },
   count_value4: { type: String },
-  headline: { type: String }, // New field for the headline
-  desc: { type: String }, // New field for the description
-  heroImage: { type: String } // New field for storing the hero image path
+  headline: { type: String },
+  desc: { type: String },
+  heroImage: { type: String }
 });
-
 const Basic = mongoose.model('Basic', basicSchema);
-
-
-
 
 // Register endpoint with validation
 app.post('/register', [
   body('username').notEmpty().withMessage('Username is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
 ], async (req, res) => {
-  // Validate request
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -85,17 +88,15 @@ app.post('/register', [
 
   const { username, password } = req.body;
   try {
-    // Check if user already exists
     const existingUser = await User.findOne({ username });
     if (existingUser) return res.status(400).send('User already exists');
 
-    // Hash the password and create a new user
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ username, password: hashedPassword });
     await user.save();
     res.status(201).send('User registered successfully');
   } catch (error) {
-    console.error('Error registering user:', error);
+    console.error('Error registering user:', error.message);
     res.status(500).send('Error registering user');
   }
 });
@@ -103,11 +104,10 @@ app.post('/register', [
 // Endpoint to get all registered users
 app.get('/users', async (req, res) => {
   try {
-    // Find all users
     const users = await User.find().select('-password');
     res.json(users);
   } catch (error) {
-    console.error('Error fetching users:', error);
+    console.error('Error fetching users:', error.message);
     res.status(500).send('Error fetching users');
   }
 });
@@ -117,7 +117,6 @@ app.post('/login', [
   body('username').notEmpty().withMessage('Username is required'),
   body('password').notEmpty().withMessage('Password is required')
 ], async (req, res) => {
-  // Validate request
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -125,23 +124,19 @@ app.post('/login', [
 
   const { username, password } = req.body;
   try {
-    // Find user and verify password
     const user = await User.findOne({ username });
     if (!user) return res.status(400).send('User not found');
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) return res.status(400).send('Invalid password');
 
-    // Generate a JWT token
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
     res.json({ token });
   } catch (error) {
-    console.error('Error logging in:', error);
+    console.error('Error logging in:', error.message);
     res.status(500).send('Error logging in');
   }
 });
-
-
 
 // Get all Basic documents
 app.get('/basic', async (req, res) => {
@@ -149,7 +144,7 @@ app.get('/basic', async (req, res) => {
     const basics = await Basic.find();
     res.json(basics);
   } catch (error) {
-    console.error('Error fetching basic data:', error);
+    console.error('Error fetching basic data:', error.message);
     res.status(500).send('Error fetching basic data');
   }
 });
@@ -162,7 +157,7 @@ app.get('/basic/:id', async (req, res) => {
     if (!basic) return res.status(404).send('Basic data not found');
     res.json(basic);
   } catch (error) {
-    console.error('Error fetching basic data:', error);
+    console.error('Error fetching basic data:', error.message);
     res.status(500).send('Error fetching basic data');
   }
 });
@@ -177,7 +172,7 @@ app.put('/basic/:id', upload.fields([{ name: 'logo' }, { name: 'heroImage' }]), 
   try {
     const updatedBasic = await Basic.findByIdAndUpdate(id, {
       logo,
-      navbar: JSON.parse(navbar), // Parse the navbar array from the request
+      navbar: JSON.parse(navbar),
       count_title1,
       count_value1,
       count_title2,
@@ -194,11 +189,10 @@ app.put('/basic/:id', upload.fields([{ name: 'logo' }, { name: 'heroImage' }]), 
     if (!updatedBasic) return res.status(404).send('Basic data not found');
     res.json(updatedBasic);
   } catch (error) {
-    console.error('Error updating basic data:', error);
+    console.error('Error updating basic data:', error.message);
     res.status(500).send('Error updating basic data');
   }
 });
-
 
 // Delete a Basic document by ID
 app.delete('/basic/:id', async (req, res) => {
@@ -208,15 +202,13 @@ app.delete('/basic/:id', async (req, res) => {
     if (!basic) return res.status(404).send('Basic data not found');
     res.send('Basic data deleted successfully');
   } catch (error) {
-    console.error('Error deleting basic data:', error);
+    console.error('Error deleting basic data:', error.message);
     res.status(500).send('Error deleting basic data');
   }
 });
 
-
-
-
 // Start the server
-app.listen(process.env.PORT || 5000, () => {
-  console.log(`Server running on port ${process.env.PORT || 5000}`);
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
