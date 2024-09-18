@@ -261,6 +261,40 @@ app.post('/login', [
 });
 
 // Get all Basic documents
+
+
+app.post('/basic', upload.fields([{ name: 'logo' }, { name: 'heroImage' }]), async (req, res) => {
+  const { navbar, count_title1, count_value1, count_title2, count_value2, count_title3, count_value3, count_title4, count_value4, headline, desc } = req.body;
+  const logo = req.files['logo'] ? req.files['logo'][0].path : null;
+  const heroImage = req.files['heroImage'] ? req.files['heroImage'][0].path : null;
+
+  try {
+    const newBasic = new Basic({
+      logo,
+      navbar: JSON.parse(navbar),
+      count_title1,
+      count_value1,
+      count_title2,
+      count_value2,
+      count_title3,
+      count_value3,
+      count_title4,
+      count_value4,
+      headline,
+      desc,
+      heroImage
+    });
+
+    const savedBasic = await newBasic.save();
+    res.status(201).json(savedBasic); // Return the created document
+  } catch (error) {
+    console.error('Error creating basic data:', error.message);
+    res.status(500).send('Error creating basic data');
+  }
+});
+
+
+
 app.get('/basic', async (req, res) => {
   try {
     const basics = await Basic.find();
@@ -1021,7 +1055,7 @@ app.get('/footer', async (req, res) => {
   try {
     // Fetch all footer documents from the database
     const footers = await Footer.find();
-    
+
     // Send a successful response with the fetched data
     res.status(200).json({
       success: true,
