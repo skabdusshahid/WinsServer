@@ -322,8 +322,13 @@ app.get('/basic/:id', async (req, res) => {
 app.put('/basic/:id', upload.fields([{ name: 'logo' }, { name: 'heroImage' }]), async (req, res) => {
   const { id } = req.params;
   const { navbar, count_title1, count_value1, count_title2, count_value2, count_title3, count_value3, count_title4, count_value4, headline, desc } = req.body;
-  const logo = req.files['logo'] ? req.files['logo'][0].path : null;
-  const heroImage = req.files['heroImage'] ? req.files['heroImage'][0].path : null;
+
+  // Use existing images if no new files are uploaded
+  const existingBasic = await Basic.findById(id);
+  if (!existingBasic) return res.status(404).send('Basic data not found');
+
+  const logo = req.files['logo'] ? req.files['logo'][0].path : existingBasic.logo;
+  const heroImage = req.files['heroImage'] ? req.files['heroImage'][0].path : existingBasic.heroImage;
 
   try {
     const updatedBasic = await Basic.findByIdAndUpdate(id, {
@@ -342,13 +347,13 @@ app.put('/basic/:id', upload.fields([{ name: 'logo' }, { name: 'heroImage' }]), 
       heroImage
     }, { new: true });
 
-    if (!updatedBasic) return res.status(404).send('Basic data not found');
     res.json(updatedBasic);
   } catch (error) {
     console.error('Error updating basic data:', error.message);
     res.status(500).send('Error updating basic data');
   }
 });
+
 
 // Delete a Basic document by ID
 app.delete('/basic/:id', async (req, res) => {
